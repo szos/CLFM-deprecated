@@ -30,8 +30,6 @@
   (let ((var (assoc 'allow-xdg-open *options*)))
     (setf (cdr var) new-val)))
 
-(defparameter *hide-hidden-files* t)
+(defparameter *uid-list* '())
 
-(defparameter *allow-xdg-open* t)
-
-(defparameter *prefer-xdg-open* nil)
+(defparameter *gid-list* '())

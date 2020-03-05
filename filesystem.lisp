@@ -90,15 +90,33 @@
 				  (path dir2)
 				  dir2))))
 	     (equal dirstring1 dirstring2)))
+	 (get-uid (stat)
+	   (let* ((uid (osicat-posix:stat-uid stat))
+		  (name (assoc uid *uid-list*)))
+	     (if name
+		 (cdr name)
+		 (let ((user (run-shell-command (format nil "awk -v val=~a -F \":\" '$3==val{print $1}' /etc/passwd" uid))))
+		   (setf *gid-list* (cons (cons uid user) *gid-list*))
+		   user)
+		 )))
+	 (get-gid (stat)
+	   (let* ((gid (osicat-posix:stat-gid stat))
+		  (name (assoc gid *gid-list*)))
+	     (if name
+		 (cdr name)
+		 (let ((group (run-shell-command (format nil "awk -v val=~a -F \":\" '$4==val{print $1}' /etc/passwd" gid))))
+		   (setf *gid-list* (cons (cons gid group) *gid-list*))
+		   group))))
 	 (collect-everything-in (dir)
 	   (loop for d in (directory-contents (path dir))
-		 collect (let ((stat (osicat-posix:stat d)))
+		 collect (let* ((stat (osicat-posix:stat d))
+				(user (get-uid stat))
+				(group (get-gid stat)))
 			   (cond ((uiop:directory-exists-p d)
 				  (make-instance 'clfm-directory
 						 :path (namestring d)
-						 :user (osicat-posix:stat-uid stat)
-						 :group (osicat-posix:stat-gid
-							 stat)
+						 :user user
+						 :group group
 						 :subdirectories nil))
 				 ((uiop:file-exists-p d)
 				  (make-instance 'clfm-file
