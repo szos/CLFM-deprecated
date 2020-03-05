@@ -1,0 +1,4 @@
+#+TITLE: CLFM – the Common Lisp File Manager
+
+* Installation and Running: 
+  Theres two ways to run CLFM. The first is by loading it via quicklisp and launching it via ~(clfm:app-main)~. The other is to run the script =make-executable.sh=, which uses SBCL to create an executable which can be copied anywhere. Don't fear, this script wont place any files anywhere aside from the current directory. 
