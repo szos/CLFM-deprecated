@@ -74,8 +74,7 @@
 			       (mcclim-truetype::make-truetype-font port f size))
 			     '(8 10 12 14 16 18 24 48 72)))))
     (my-reg (find-port) (asdf:system-relative-pathname
-			 "clfm" "fonts/" :type :directory))
-    )
+			 "clfm" "fonts/" :type :directory)))
   (loop for f in (uiop:directory-files (asdf:system-relative-pathname
 					"clfm" "fonts/" :type :directory))
 	when (string= "ttf" (file-extension f))
@@ -157,6 +156,7 @@
         (make-pane 'clim-extensions:box-adjuster-gadget)
 	(:fill
 	 current-directory)
+	(make-pane 'clim-extensions:box-adjuster-gadget)
 	(1/4 options))
       (make-pane 'clim-extensions:box-adjuster-gadget)
       (75 commander)))))
@@ -171,32 +171,26 @@
 ;;   (uiop:run-program command))
 
 (defun app-main ()
-  ;; (mcclim-truetype::register-all-ttf-fonts
-  ;;  (find-port) "/home/szos/Dokumenter/myfonts/testing/")
   (initialize-fonts)
   (set-default-font (make-text-style "ETBembo" "RomanOSF" 14))
-  ;; (run-frame-top-level (make-application-frame 'clfm))
+  (labels ((loadrc (rc-list)
+	     (loop for rc in rc-list
+		   do (let ((loaded (handler-case (load rc)
+				      (sb-int:simple-file-error () nil))))
+			(when loaded
+			  (return-from loadrc 't))))))
+    (loadrc
+     '("~/.clfm" "~/.clfmrc" "~/.clfm.d/init.lisp" "~/.config/clfm/clfmrc")))
   (handler-case (run-frame-top-level (make-application-frame 'clfm))
+    ;; we need handler case as etbembo doesnt abide by regular bold and italic
+    ;; naming
     (mcclim-truetype::missing-font ()
       (setf *default-text-style* *default-text-style-fallback*)
       (run-frame-top-level
        (make-application-frame 'clfm
   			       :current-dir
   			       (list (find-directory-in-filesystem
-  				      (namestring (uiop:getcwd))))))))
-  ;; (handler-bind ((mcclim-truetype::missing-font
-  ;; 		   (lambda (c)
-  ;; 		     (declare (ignore c))
-  ;; 		     (setf *default-text-style* *default-text-style-fallback*)
-  ;; 		     ;; (invoke-restart 'change-font-path
-  ;; 		     ;; 		 mcclim-truetype::*truetype-font-path*)
-  ;; 		     )))
-  ;;   (run-frame-top-level (make-application-frame 'clfm)))
-  ;; (handler-case 
-  ;;   (mcclim-truetype::missing-font (err)
-  ;;     (mcclim-truetype::make-truetype-font
-  ;;      (find-port) )))
-  )
+  				      (namestring (uiop:getcwd)))))))))
 
 (defmethod hidden-file-or-directory-p ((path string))
   (let* ((p path)
@@ -293,8 +287,7 @@
   (let ((layout (frame-current-layout *application-frame*)))
     (if (equal layout 'options)
         (setf (frame-current-layout *application-frame*) 'default)
-        (setf (frame-current-layout *application-frame*) 'options)
-	)))
+        (setf (frame-current-layout *application-frame*) 'options))))
 
 (define-clfm-command (com-toggle-show-hidden-files :name "Show/Hide Hidden Files")
     ()
@@ -748,7 +741,6 @@
 					     (cl-ppcre:split "/"
 							     (path
 							      directory)))))))))))
-    ;; (let ((x (x-position))))
     (multiple-value-bind (x y) (bounding-rectangle-position (sheet-parent pane))
       (loop for dir in *filesystem-from-root*
 	    do (display-directories dir 0))
@@ -779,14 +771,21 @@
 
 (defun display-options (frame pane)
   (declare (ignore frame))
-  (slim:with-table (pane)
-    (loop for option in *options*
-	  do (slim:row
-	       (slim:cell
-		 (with-end-of-line-action (pane :scroll)
-		   (with-output-as-presentation (pane option
-						      'toggle-option-presentation
-						      :single-box t)
-		     (format pane "~a is ~a"
-			     (car option)
-			     (if (cdr option) "Enabled" "Disabled")))))))))
+  (with-end-of-line-action (pane :scroll)
+    (slim:with-table (pane)
+      (with-etbembo (pane :bold)
+	(slim:row
+	  (slim:cell (format pane ""))
+	  (slim:cell (format pane "Option"))))
+      (loop for option in *options*
+	    do (slim:row
+		 (with-output-as-presentation (pane option
+						    'toggle-option-presentation
+						    :single-box t)
+		   (slim:cell
+		     (when (cdr option)
+		       (with-etbembo (pane)
+			 (format pane "× "))))
+		   (slim:cell
+		     (with-etbembo (pane :semi-bold)
+		       (format pane "~a" (car option))))))))))
