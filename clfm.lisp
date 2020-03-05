@@ -784,7 +784,7 @@
 						    :single-box t)
 		   (slim:cell
 		     (when (cdr option)
-		       (with-etbembo (pane)
+		       (with-etbembo (pane :bold)
 			 (format pane "× "))))
 		   (slim:cell
 		     (with-etbembo (pane :semi-bold)
