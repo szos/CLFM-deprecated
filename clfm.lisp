@@ -2,6 +2,12 @@
 
 (in-package #:clfm)
 
+(defmacro when-let ((&body vars) &body body)
+  `(let ,vars
+     (when (and ,@(loop for (var val) in vars
+			collect var))
+       ,@body)))
+
 (defmacro bold ((stream) &body body)
   `(with-text-face (,stream :bold)
      ,@body))
@@ -677,15 +683,34 @@
     (when (hide-files?)
       (setf contents (remove-if #'hidden-file-or-directory-p contents)))
     (slim:with-table (pane)
-      (with-output-as-presentation (pane
-				    (concatenate 'string
-						 (path
-						  (car (current-dir frame)))
-						 "..")
-				    'access-object-presentation
-				    :single-box t)
+      (slim:row
 	(with-etbembo (pane :italic)
-	  (slim:row (slim:cell (format pane "Up One Directory")))))
+	  (with-output-as-presentation (pane
+					(concatenate 'string
+						     (path
+						      (car (current-dir frame)))
+						     "..")
+					'access-object-presentation
+					:single-box t)
+	    (slim:cell (format pane "Up One Directory")))
+	  (when-let ((usr (display-user?)))
+	    (with-output-as-presentation (pane
+					  `(display-user . usr)
+					  'toggle-option-presentation
+					  :single-box t)
+	      (slim:cell (format pane "User"))))
+	  (when-let ((grp (display-group?)))
+	    (with-output-as-presentation (pane
+					  `(display-group . grp)
+					  'toggle-option-presentation
+					  :single-box t)
+	      (slim:cell (format pane "Group"))))
+	  (when-let ((perms (display-permissions?)))
+	    (with-output-as-presentation (pane
+					  `(display-permissions . perms)
+					  'toggle-option-presentation
+					  :single-box t)
+	      (slim:cell (format pane "Permissions"))))))
       (loop for thing in contents
 	    do (with-output-as-presentation (pane thing
 						  'access-object-presentation
@@ -698,7 +723,15 @@
 			     (format pane "D  "))
 			   (with-drawing-options (pane :ink +dark-green+)
 			     (format pane "F  ")))
-		       (format pane "~a" (display-name thing))))))))))
+		       (format pane "~a" (display-name thing))))
+		   (with-etbembo (pane)
+		     (when (display-user?)
+		       (slim:cell (format pane "~a" (user thing))))
+		     (when (display-group?)
+		       (slim:cell (format pane "~a" (group thing)))))
+		   (when (display-permissions?)
+		     (slim:cell (format pane "~a"
+					(user-readable-permissions thing))))))))))
 
 (defparameter *filesystem-from-root*
   (loop for directory in (uiop:subdirectories "/")
