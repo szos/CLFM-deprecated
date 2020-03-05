@@ -2,3 +2,12 @@
 
 * Installation and Running: 
   Theres two ways to run CLFM. The first is by loading it via quicklisp and launching it via ~(clfm:app-main)~. The other is to run the script =make-executable.sh=, which uses SBCL to create an executable which can be copied anywhere. Don't fear, this script wont place any files anywhere aside from the current directory. 
+
+* Usage
+  This should be fairly straightforward to use, its a point and click interface, laid out like a general file manager, such as xfe or thunar. 
+
+* Issues
+  There is some sort of issue with =/dev/null= and running a shell command. It is unclear at this time what this issue is, but it crashes the program, and prevents one from visiting directories that havent been visited before. This can be reliably triggered by navigating to =/bin/= on my void linux system. 
+
+* Licenses
+  This project utilizes its own fonts to avoid relying on a user having the exact fonts installed that I do. Specifically ETBembo is chosen as it is beautiful and easy to read. The license, as far as I, a non lawyer, understand it, allows redistribution so long as the original license is included. This license is included in the fonts subdirectory. 
