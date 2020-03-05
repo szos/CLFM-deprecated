@@ -10,7 +10,18 @@ else
     /bin/echo -e "\e[1;32mSBCL is installed, proceeding\e[0m"
 fi
 
-sbcl --eval "(push #p\"./\" asdf:*central-registry*)" --eval "(asdf:operate 'asdf:load-op 'clfm)" --eval "(clfm::make-executable)"
+sbcl --eval "(progn (handler-case (in-package :ql) (PACKAGE-DOES-NOT-EXIST () (exit :code 1))) (sb-ext:exit :code 0))" > /dev/null 2>&1
+
+exit="$?"
+
+if [ ! "$exit" -eq 0 ]; then
+    /bin/echo -e "\e[1;31mQuicklisp not installed, exiting\e[0m"
+    exit 1
+else
+    /bin/echo -e "\e[1;32mQuicklisp is installed, proceeding\e[0m"
+fi
+
+sbcl --eval "(push #p\"./\" asdf:*central-registry*)" --eval "(ql:quickload :clfm)" --eval "(clfm::make-executable)"
 
 exit="$?"
 
