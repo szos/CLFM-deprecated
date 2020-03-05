@@ -80,6 +80,27 @@
 (defmethod display-name ((file-or-directory clfm-object))
   (car (last (cl-ppcre:split "/" (path file-or-directory)))))
 
+(defun user-readable-permissions (clfm-object)
+  (with-output-to-string (string)
+    (labels ((permission-loop (permissions &optional (default
+						      '((:USER-READ . "r")
+							(:USER-WRITE . "w")
+							(:USER-EXEC . "x")
+							(:GROUP-READ . "r")
+							(:GROUP-WRITE . "w")
+							(:GROUP-EXEC . "x")
+							(:OTHER-READ . "r")
+							(:OTHER-WRITE . "w")
+							(:OTHER-EXEC . "x"))))
+	       (when (and permissions default)
+		 (cond ((eq (car permissions) (caar default))
+			(format string (cdar default))
+			(permission-loop (cdr permissions) (cdr default)))
+		       (t
+			(format string "-")
+			(permission-loop permissions (cdr default)))))))
+      (permission-loop (permissions clfm-object)))))
+
 (labels ((directory= (dir1 dir2)
 	   (let ((dirstring1 (uiop:directory-exists-p
 			      (if (clfm-directory-p dir1)
@@ -112,15 +133,22 @@
 		 collect (let* ((stat (osicat-posix:stat d))
 				(user (get-uid stat))
 				(group (get-gid stat)))
+			   (print stat)
 			   (cond ((uiop:directory-exists-p d)
 				  (make-instance 'clfm-directory
 						 :path (namestring d)
 						 :user user
 						 :group group
+						 :permissions
+						 (osicat:file-permissions d)
 						 :subdirectories nil))
 				 ((uiop:file-exists-p d)
 				  (make-instance 'clfm-file
-						 :path (namestring d)))
+						 :path (namestring d)
+						 :user user
+						 :group group
+						 :permissions
+						 (osicat:file-permissions d)))
 				 (t
 				  "Neither a directory nor a file")))))
 	 (collect-subdirs (dir)
@@ -168,27 +196,67 @@
       (setf (subdirectories directory)
 	    (collect-subdirs directory)))
     (setf (current-dir *application-frame*)
-	  (cons directory (current-dir *application-frame*)))))
+	  (cons directory (current-dir *application-frame*))))
+  (defun generate-filesystem-objects ()
+    (let ((cwd (namestring (uiop:getcwd))))
+      (labels ((collecter (dir)
+		 (loop for d in (directory-contents dir)
+		       collect
+		       (cond ((uiop:directory-exists-p d)
+			      (make-instance 'clfm-directory
+					     :path (namestring d)
+					     :user (get-uid
+						    (osicat-posix:stat d))
+					     :group (get-gid
+						     (osicat-posix:stat d))
+					     :permissions
+					     (osicat:file-permissions d)
+					     :subdirectories
+					     (when (uiop:string-prefix-p
+						    (namestring d) cwd)
+					       (collecter (namestring d)))))
+			     ((uiop:file-exists-p d)
+			      (make-instance 'clfm-file
+					     :path (namestring d)
+					     :user (get-uid
+						    (osicat-posix:stat d))
+					     :group (get-gid
+						     (osicat-posix:stat d))
+					     :permissions
+					     (osicat:file-permissions d)))
+			     (t
+			      "Neither a directory nor a file")))))
+	(make-instance 'clfm-directory
+		       :path "/"
+		       :user (get-uid (osicat-posix:stat "/"))
+		       :group (get-gid (osicat-posix:stat "/"))
+		       :permissions (osicat:file-permissions "/")
+		       :subdirectories (collecter "/"))))))
 
-(defun generate-filesystem-objects ()
-  (let ((cwd (namestring (uiop:getcwd))))
-    (labels ((collecter (dir)
-	       (loop for d in (directory-contents dir)
-		     collect (cond ((uiop:directory-exists-p d)
-				    (make-instance 'clfm-directory
-						   :path (namestring d)
-						   :subdirectories
-						   (when (uiop:string-prefix-p
-							  (namestring d) cwd)
-						     (collecter (namestring d)))))
-				   ((uiop:file-exists-p d)
-				    (make-instance 'clfm-file
-						   :path (namestring d)))
-				   (t
-				    "Neither a directory nor a file")))))
-      (make-instance 'clfm-directory
-		     :path "/"
-		     :subdirectories (collecter "/")))))
+;; (defun old/generate-filesystem-objects ()
+;;   (let ((cwd (namestring (uiop:getcwd))))
+;;     (labels ((collecter (dir)
+;; 	       (loop for d in (directory-contents dir)
+;; 		     collect
+;; 		     (cond ((uiop:directory-exists-p d)
+;; 			    (make-instance 'clfm-directory
+;; 					   :path (namestring d)
+;; 					   :user (get-uid
+;; 						  (osicat-posix:stat d))
+;; 					   :group (get-gid
+;; 						   (osicat-posix:stat d))
+;; 					   :subdirectories
+;; 					   (when (uiop:string-prefix-p
+;; 						  (namestring d) cwd)
+;; 					     (collecter (namestring d)))))
+;; 			   ((uiop:file-exists-p d)
+;; 			    (make-instance 'clfm-file
+;; 					   :path (namestring d)))
+;; 			   (t
+;; 			    "Neither a directory nor a file")))))
+;;       (make-instance 'clfm-directory
+;; 		     :path "/"
+;; 		     :subdirectories (collecter "/")))))
 
 (defparameter *filesystem* (generate-filesystem-objects))
 
